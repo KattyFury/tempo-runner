@@ -1,0 +1,62 @@
+[
+  {
+    "id": "exa-search",
+    "name": "Exa Search",
+    "method": "POST",
+    "url": "https://exa.mpp.tempo.xyz/search",
+    "priceHint": 0.005,
+    "maxSpend": 0.02,
+    "bodyHint": "Web search. Body: {\"query\": string, \"numResults\": 1-5}. Pick any interesting real-world topic.",
+    "mockBody": { "query": "latest AI news", "numResults": 3 }
+  },
+  {
+    "id": "exa-answer",
+    "name": "Exa Answer",
+    "method": "POST",
+    "url": "https://exa.mpp.tempo.xyz/answer",
+    "priceHint": 0.01,
+    "maxSpend": 0.03,
+    "bodyHint": "AI-powered answer to a question. Body: {\"query\": string}. Ask any factual question.",
+    "mockBody": { "query": "What is the capital of Japan?" }
+  },
+  {
+    "id": "firecrawl-search",
+    "name": "Firecrawl Search",
+    "method": "POST",
+    "url": "https://firecrawl.mpp.tempo.xyz/v1/search",
+    "priceHint": 0.004,
+    "maxSpend": 0.02,
+    "bodyHint": "Web search. Body: {\"query\": string}. Pick any topic.",
+    "mockBody": { "query": "best coffee in Hanoi" }
+  },
+  {
+    "id": "firecrawl-scrape",
+    "name": "Firecrawl Scrape",
+    "method": "POST",
+    "url": "https://firecrawl.mpp.tempo.xyz/v1/scrape",
+    "priceHint": 0.002,
+    "maxSpend": 0.02,
+    "bodyHint": "Scrape one URL to markdown. Body: {\"url\": string}. Use a well-known public URL like https://example.com or a news homepage.",
+    "mockBody": { "url": "https://example.com" }
+  },
+  {
+    "id": "parallel-search",
+    "name": "Parallel Search",
+    "method": "POST",
+    "url": "https://parallelmpp.dev/api/search",
+    "priceHint": 0.01,
+    "maxSpend": 0.03,
+    "bodyHint": "Web search. Body: {\"objective\": string}. State a short search objective.",
+    "mockBody": { "objective": "Find recent developments in stablecoin payments" }
+  },
+  {
+    "id": "fal-schnell",
+    "name": "fal FLUX schnell (image)",
+    "method": "POST",
+    "url": "https://fal.mpp.tempo.xyz/fal-ai/flux/schnell",
+    "priceHint": 0.003,
+    "maxSpend": 0.02,
+    "bodyHint": "Fast text-to-image. Body: {\"prompt\": string}. Describe any creative image.",
+    "mockBody": { "prompt": "a calm sunrise over rice terraces, watercolor" }
+  }
+]

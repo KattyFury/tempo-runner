@@ -1,0 +1,10 @@
+{
+  "name": "tempo-runner",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Engine gọi dịch vụ MPP (Tempo), não Claude Haiku, chạy trên GitHub Actions",
+  "scripts": {
+    "start": "node engine.mjs"
+  }
+}
