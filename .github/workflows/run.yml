@@ -35,11 +35,14 @@ jobs:
           # Hâm nóng để launcher tải sẵn extension tempo-request
           "$HOME/.tempo/bin/tempo" request --help >/dev/null 2>&1 || true
 
-      - name: Khôi phục ví Tempo (credential login) từ secret
+      - name: Khôi phục ví Tempo từ secret (nếu dùng credential login)
         env:
           TEMPO_WALLET_B64: ${{ secrets.TEMPO_WALLET_B64 }}
         run: |
-          if [ -z "$TEMPO_WALLET_B64" ]; then echo "Thiếu secret TEMPO_WALLET_B64"; exit 1; fi
+          if [ -z "$TEMPO_WALLET_B64" ]; then
+            echo "Không có TEMPO_WALLET_B64 — dùng TEMPO_PRIVATE_KEY."
+            exit 0
+          fi
           mkdir -p "$HOME/.tempo"
           echo "$TEMPO_WALLET_B64" | base64 -d > /tmp/w.tar.gz
           tar -xzf /tmp/w.tar.gz -C "$HOME/.tempo"
@@ -53,6 +56,7 @@ jobs:
           # Chạy tay (Run workflow) thì bỏ qua khung giờ; cron vẫn theo 7–22h VN
           FORCE_ACTIVE: ${{ github.event_name == 'workflow_dispatch' && '1' || '' }}
           DAILY_CAP: ${{ vars.DAILY_CAP || '0.16' }}
+          TEMPO_PRIVATE_KEY: ${{ secrets.TEMPO_PRIVATE_KEY }}
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: node engine.mjs
