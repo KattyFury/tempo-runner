@@ -31,6 +31,13 @@ const STATE_DIR = path.join(__dir, "state");
 const LOG_FILE = path.join(STATE_DIR, "log.txt");
 const STRIKES_FILE = path.join(STATE_DIR, "strikes.json");
 const SPEND_FILE = path.join(STATE_DIR, "spend.json");
+const PLAN_FILE = path.join(STATE_DIR, "plan.json");
+
+const ACTIVE_START_MIN = 7 * 60;   // 07:00 VN
+const ACTIVE_END_MIN = 22 * 60;    // 22:00 VN (khớp withinActiveHours)
+const MIN_GAP_MIN = 45;            // 2 lượt cách nhau tối thiểu 45 phút
+const MIN_DAILY_RUNS = Number(process.env.MIN_DAILY_RUNS || "5");
+const MAX_DAILY_RUNS = Number(process.env.MAX_DAILY_RUNS || "10");
 
 const services = JSON.parse(fs.readFileSync(path.join(__dir, "services.json"), "utf8"));
 
@@ -50,6 +57,7 @@ function vnStamp() {
   return d.toISOString().slice(0, 16).replace("T", " ");
 }
 function vnHour() { return vnNow().getUTCHours(); }
+function vnMinuteOfDay() { const d = vnNow(); return d.getUTCHours() * 60 + d.getUTCMinutes(); }
 
 function withinActiveHours() {
   if (process.env.FORCE_ACTIVE === "1") return true; // bypass để test
@@ -84,6 +92,48 @@ function loadSpend() {
   return s;
 }
 function saveSpend(s) { writeJSON(SPEND_FILE, s); }
+
+// ---------- State: kế hoạch giờ chạy ngẫu nhiên trong ngày ----------
+// Mỗi ngày tự chọn N lượt (MIN_DAILY_RUNS..MAX_DAILY_RUNS) + N mốc giờ ngẫu nhiên
+// (cách nhau tối thiểu MIN_GAP_MIN) trong khung ACTIVE_START_MIN..ACTIVE_END_MIN.
+// Cron có gọi engine bao nhiêu lần cũng chỉ thực sự "bắn" đúng lúc chạm 1 mốc trong plan.
+function genTargets() {
+  const n = MIN_DAILY_RUNS + Math.floor(Math.random() * (MAX_DAILY_RUNS - MIN_DAILY_RUNS + 1));
+  const span = ACTIVE_END_MIN - ACTIVE_START_MIN;
+  for (let attempt = 0; attempt < 30; attempt++) {
+    const pts = Array.from({ length: n }, () => ACTIVE_START_MIN + Math.floor(Math.random() * span)).sort((a, b) => a - b);
+    let okGap = true;
+    for (let i = 1; i < pts.length; i++) if (pts[i] - pts[i - 1] < MIN_GAP_MIN) { okGap = false; break; }
+    if (okGap) return pts;
+  }
+  return Array.from({ length: n }, (_, i) => ACTIVE_START_MIN + Math.floor((i + 0.5) * span / n)); // fallback: rải đều
+}
+
+function loadPlan() {
+  const today = vnDateStr();
+  const p = readJSON(PLAN_FILE, null);
+  if (p && p.date === today) return p;
+  const fresh = { date: today, targets: genTargets(), done: [] };
+  fresh.done = fresh.targets.map(() => false);
+  writeJSON(PLAN_FILE, fresh);
+  console.log(`[plan] Ngày mới -> chọn ${fresh.targets.length} lượt ngẫu nhiên: ${fresh.targets.map(fmtMin).join(", ")} (giờ VN)`);
+  return fresh;
+}
+function savePlan(p) { writeJSON(PLAN_FILE, p); }
+function fmtMin(m) { return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`; }
+
+// Có mốc nào trong plan đã tới giờ mà chưa chạy không? Nếu có, đánh dấu đã dùng và trả về true.
+function claimDueSlot(plan) {
+  const now = vnMinuteOfDay();
+  for (let i = 0; i < plan.targets.length; i++) {
+    if (!plan.done[i] && plan.targets[i] <= now) {
+      plan.done[i] = true;
+      savePlan(plan);
+      return true;
+    }
+  }
+  return false;
+}
 
 // Danh sách dịch vụ còn sống (chưa bị gạch)
 function activeServices(strikes) {
@@ -184,6 +234,12 @@ function runOnce() {
   const spend = loadSpend();
   if (spend.spent >= DAILY_CAP) {
     console.log(`[skip] Đã chạm trần ngày $${spend.spent.toFixed(4)}/$${DAILY_CAP}. Nghỉ tới mai.`);
+    return false;
+  }
+  const plan = loadPlan();
+  if (process.env.FORCE_ACTIVE !== "1" && !claimDueSlot(plan)) {
+    const left = plan.targets.filter((_, i) => !plan.done[i]);
+    console.log(`[skip] Chưa tới mốc ngẫu nhiên nào trong plan hôm nay. Còn chờ: ${left.map(fmtMin).join(", ") || "(hết mốc)"}`);
     return false;
   }
   const strikes = loadStrikes();

@@ -3,9 +3,11 @@ name: tempo-runner
 on:
   workflow_dispatch: {}          # bấm chạy tay
   schedule:
-    # Chạy ~mỗi 30 phút trong khung 00:00–15:30 UTC = 07:00–22:30 giờ VN.
-    # Lưu ý: cron của GitHub hay trễ 5–15 phút, đó chính là "giờ ngẫu nhiên".
-    - cron: "*/30 0-15 * * *"
+    # Gõ cửa mỗi ~15 phút (lệch phút, tránh đúng mốc :00/:30 GitHub hay nghẽn) trong khung
+    # 00:00–15:30 UTC = 07:00–22:30 giờ VN. Bản thân engine.mjs mới là nơi quyết định có
+    # thực sự chạy hay không: mỗi ngày tự chọn 5-10 mốc giờ ngẫu nhiên (state/plan.json),
+    # cron gọi bao nhiêu lần cũng chỉ "bắn" đúng lúc chạm 1 mốc trong plan đó.
+    - cron: "3,18,33,48 0-15 * * *"
 
 # Không cho 2 lần chạy chồng nhau (tránh push state đè nhau)
 concurrency:
