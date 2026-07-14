@@ -2,7 +2,11 @@
 
 Bot tự động gọi các **dịch vụ trả phí trên Tempo (MPP)** để tạo hoạt động on-chain đều đặn — giữ ví "sống" phục vụ airdrop. Não là **OpenAI** (gọi thẳng, KHÔNG qua Tempo — không ăn vào ngân sách USDC). Chạy hoàn toàn **miễn phí trên GitHub Actions**, tự báo **Telegram**, tự ghi log về repo.
 
-Mỗi lượt: não tự chọn 1 dịch vụ trong danh sách + tự soạn yêu cầu → gọi → ghi log → báo Telegram. Có **bộ nhớ chống lặp**: 2 dịch vụ vừa dùng gần nhất bị khoá tạm (ép 3 lượt liên tiếp luôn là 3 dịch vụ khác nhau — không chỉ chặn lặp y hệt 1 dịch vụ, vì kiểu ping-pong "Exa Search ↔ Exa Answer" vẫn né được rule yếu hơn), và không cho hỏi lại nguyên văn 1 câu đã hỏi — nếu não vẫn đề xuất trùng sau khi thử lại 1 lần, bot **tự bỏ lượt đó, không tốn tiền** (bug cũ: não stateless, không nhớ gì → cứ lặp mãi 1 câu hỏi "an toàn" như "Exa Search: quantum computing" cả ngày, đã sửa bằng cơ chế này). Dịch vụ nào lỗi 3 lần thì tự bị gạch. Có trần chi tiêu/ngày để **không bao giờ vượt ngân sách** (mặc định ~$5/tháng), và tự báo Telegram khi ví sắp cạn tiền.
+Mỗi lượt: não tự chọn 1 dịch vụ trong danh sách + tự soạn yêu cầu → gọi → ghi log → báo Telegram. Có **bộ nhớ chống lặp** 3 lớp: (1) 2 dịch vụ vừa dùng gần nhất bị khoá tạm (ép 3 lượt liên tiếp luôn là 3 dịch vụ khác nhau — không chỉ chặn lặp y hệt 1 dịch vụ, vì kiểu ping-pong "Exa Search ↔ Exa Answer" vẫn né được rule yếu hơn); (2) không cho lặp lại 1 yêu cầu đã hỏi trong **15 lượt gần nhất** — nếu não vẫn đề xuất trùng sau khi thử lại 1 lần, bot **tự bỏ lượt đó, không tốn tiền**; (3) mỗi lượt gieo thêm 1 **chủ đề ngẫu nhiên** vào prompt để não bớt hội tụ về vài câu "an toàn".
+
+> ⚠️ **Bài học (đã sửa):** bản đầu chặn lặp bằng cách so với **toàn bộ** lịch sử → với ít dịch vụ + não ít sáng tạo, không gian câu "an toàn" cạn dần, tới lúc *mọi* đề xuất đều trùng → bot skip mãi, **đứng hình cả tuần** dù vẫn "online". Đổi sang cửa sổ **15 câu gần nhất** + gieo chủ đề ngẫu nhiên mới phá được deadlock đó (bug gốc trước nữa: não stateless nên cứ lặp 1 câu "an toàn" như "quantum computing" cả ngày).
+
+Dịch vụ nào lỗi 3 lần thì tự bị gạch. Có trần chi tiêu/ngày để **không bao giờ vượt ngân sách** (mặc định ~$5/tháng), và tự báo Telegram khi ví sắp cạn tiền.
 
 **Số lượt/ngày là ngẫu nhiên, có thể là 0**, không chạy đều đặn cứng nhắc: mỗi ngày bot tự random 0-10 lượt. **Khung giờ hoạt động bắt buộc chọn 1 trong 2 nửa ngày (giờ VN): `0h-12h` hoặc `12h-24h`** — mỗi bot chỉ dùng đúng 1 khung, không còn dùng chung 1 khung 7h-22h cho tất cả bot nữa (để nhiều bot chạy song song trông tự nhiên hơn, không đồng loạt "thức dậy" cùng lúc).
 
@@ -199,7 +203,8 @@ GitHub Actions (cron gõ cửa mỗi ~15 phút, lệch phút riêng từng bot)
           Đọc state/history.json (dịch vụ + câu hỏi đã gọi trước đó)
             -> loại dịch vụ vừa bị gọi 2 lần liên tiếp khỏi danh sách được chọn
           OpenAI (gọi thẳng, không qua Tempo) chọn 1 dịch vụ + soạn request
-            -> nếu request trùng nguyên văn 1 câu đã hỏi trước, hỏi lại 1 lần;
+            (prompt kèm 1 chủ đề ngẫu nhiên mỗi lượt để đa dạng hoá)
+            -> nếu request trùng 1 câu đã hỏi trong 15 lượt gần nhất, hỏi lại 1 lần;
                vẫn trùng thì bỏ lượt, không gọi, không tốn tiền
           → gọi dịch vụ (tempo request --private-key)
           → ghi state/log.txt + state/history.json, đếm chi tiêu (chặn DAILY_CAP),
